@@ -11,8 +11,6 @@ import { User } from "./users/entities/user.entity";
 import { UserCourse } from "./user-courses/entities/user-course.entity";
 import { Course } from "./courses/entities/course.entity";
 import { CourseDependency } from "./courses/entities/course-dependency.entity";
-import { AuthController } from "./auth/auth.controller";
-import { AuthService } from "./auth/auth.service";
 
 @Module({
     imports: [

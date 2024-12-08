@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Get,
+    Post,
+    Query,
+    UseGuards,
+} from "@nestjs/common";
 import { UserCoursesService } from "./user-courses.service";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import {
@@ -7,6 +15,7 @@ import {
     ApiBody,
     ApiTags,
     ApiBearerAuth,
+    ApiQuery,
 } from "@nestjs/swagger";
 
 @ApiTags("User Courses")
@@ -105,12 +114,11 @@ export class UserCoursesController {
 
     @Get("unlockable")
     @ApiOperation({ summary: "Get unlockable courses for a user" })
-    @ApiBody({
-        schema: {
-            example: {
-                userId: "123e4567-e89b-12d3-a456-426614174000",
-            },
-        },
+    @ApiQuery({
+        name: "userId",
+        type: String,
+        description: "The ID of the user to retrieve unlockable courses for",
+        example: "123e4567-e89b-12d3-a456-426614174000",
     })
     @ApiResponse({
         status: 200,
@@ -135,7 +143,11 @@ export class UserCoursesController {
         status: 400,
         description: "User ID is required",
     })
-    async getUnlockableCourses(@Body() { userId }: { userId: string }) {
+    async getUnlockableCourses(@Query("userId") userId: string) {
+        if (!userId) {
+            throw new BadRequestException("User ID is required");
+        }
+
         const courses =
             await this.userCoursesService.getUnlockableCourses(userId);
         return courses;

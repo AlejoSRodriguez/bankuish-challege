@@ -1,178 +1,150 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from '../auth.service';
-import { UsersService } from '../../users/users.service';
-import * as admin from 'firebase-admin';
-import {
-  ConflictException,
-  InternalServerErrorException,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { DecodedIdToken } from 'firebase-admin/auth';
+import { Test, TestingModule } from "@nestjs/testing";
+import { AuthService } from "../auth.service";
+import { UsersService } from "../../users/users.service";
+import { HttpService } from "@nestjs/axios";
+import { lastValueFrom } from "rxjs";
+import { InternalServerErrorException } from "@nestjs/common";
 
-jest.mock('firebase-admin', () => ({
-  auth: jest.fn().mockReturnThis(),
-  createUser: jest.fn(),
-  verifyIdToken: jest.fn(),
+jest.mock("rxjs", () => ({
+    ...jest.requireActual("rxjs"),
+    lastValueFrom: jest.fn(),
 }));
 
 const mockUsersService = {
-  createUser: jest.fn(),
-  findOrCreateUser: jest.fn(),
+    findByEmail: jest.fn(),
 };
 
-describe('AuthService', () => {
-  let authService: AuthService;
+const mockHttpService = {
+    post: jest.fn(),
+};
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        { provide: UsersService, useValue: mockUsersService },
-      ],
-    }).compile();
+describe("AuthService", () => {
+    let authService: AuthService;
 
-    authService = module.get<AuthService>(AuthService);
-  });
+    beforeEach(async () => {
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                AuthService,
+                { provide: UsersService, useValue: mockUsersService },
+                { provide: HttpService, useValue: mockHttpService },
+            ],
+        }).compile();
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe('register', () => {
-    it('should register a user successfully', async () => {
-      const mockFirebaseUser: admin.auth.UserRecord = {
-        uid: 'firebase-uid',
-        email: 'test@example.com',
-        emailVerified: false,
-        disabled: false,
-        metadata: {
-          lastSignInTime: null,
-          creationTime: '2024-12-07T00:00:00.000Z',
-          toJSON: () => ({}),
-        },
-        providerData: [],
-        tokensValidAfterTime: null,
-        toJSON: () => ({
-          uid: 'firebase-uid',
-          email: 'test@example.com',
-        }),
-      };
-
-      const mockNewUser = {
-        id: 'db-id',
-        firebaseUid: 'firebase-uid',
-        email: 'test@example.com',
-        name: 'Test User',
-      };
-
-      jest
-        .spyOn(admin.auth(), 'createUser')
-        .mockResolvedValue(mockFirebaseUser);
-      mockUsersService.createUser.mockResolvedValue(mockNewUser);
-
-      const result = await authService.register(
-        'test@example.com',
-        'password123',
-        'Test User',
-      );
-
-      expect(result).toEqual({
-        message: 'User registered successfully',
-        newUser: mockNewUser,
-      });
-      expect(admin.auth().createUser).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'password123',
-      });
-      expect(mockUsersService.createUser).toHaveBeenCalledWith({
-        firebaseUid: 'firebase-uid',
-        email: 'test@example.com',
-        name: 'Test User',
-      });
+        authService = module.get<AuthService>(AuthService);
     });
 
-    it('should throw ConflictException if email already exists', async () => {
-      jest
-        .spyOn(admin.auth(), 'createUser')
-        .mockRejectedValue({ code: 'auth/email-already-exists' });
-
-      await expect(
-        authService.register('test@example.com', 'password123', 'Test User'),
-      ).rejects.toThrow(ConflictException);
+    afterEach(() => {
+        jest.clearAllMocks();
     });
 
-    it('should throw InternalServerErrorException for unexpected errors', async () => {
-      jest
-        .spyOn(admin.auth(), 'createUser')
-        .mockRejectedValue(new Error('Unexpected error'));
+    describe("login", () => {
+        it("should log in a user successfully", async () => {
+            const mockFirebaseResponse = {
+                data: {
+                    idToken: "firebase-token",
+                    email: "test@example.com",
+                    refreshToken: "refresh-token",
+                    localId: "firebase-uid",
+                },
+            };
 
-      await expect(
-        authService.register('test@example.com', 'password123', 'Test User'),
-      ).rejects.toThrow(InternalServerErrorException);
+            const mockLocalUser = {
+                id: "db-id",
+                email: "test@example.com",
+                name: "Test User",
+            };
+
+            (lastValueFrom as jest.Mock).mockResolvedValue(
+                mockFirebaseResponse
+            );
+            mockUsersService.findByEmail.mockResolvedValue(mockLocalUser);
+
+            const result = await authService.login(
+                "test@example.com",
+                "password123"
+            );
+
+            expect(result).toEqual({
+                firebaseData: mockFirebaseResponse.data,
+                localUser: {
+                    id: mockLocalUser.id,
+                    email: mockLocalUser.email,
+                    name: mockLocalUser.name,
+                },
+            });
+
+            expect(mockHttpService.post).toHaveBeenCalledWith(
+                `${process.env.FIREBASE_AUTH_DOMAIN}?key=${process.env.FIREBASE_API_KEY}`,
+                {
+                    email: "test@example.com",
+                    password: "password123",
+                    returnSecureToken: true,
+                }
+            );
+
+            expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+                "test@example.com"
+            );
+        });
+
+        it("should throw an error if the user is not found in the local database", async () => {
+            const mockFirebaseResponse = {
+                data: {
+                    idToken: "firebase-token",
+                    email: "test@example.com",
+                    refreshToken: "refresh-token",
+                    localId: "firebase-uid",
+                },
+            };
+
+            (lastValueFrom as jest.Mock).mockResolvedValue(
+                mockFirebaseResponse
+            );
+            mockUsersService.findByEmail.mockResolvedValue(null);
+
+            await expect(
+                authService.login("test@example.com", "password123")
+            ).rejects.toThrow(
+                new InternalServerErrorException(
+                    "User exists in Firebase but not in the local database."
+                )
+            );
+
+            expect(mockHttpService.post).toHaveBeenCalledWith(
+                `${process.env.FIREBASE_AUTH_DOMAIN}?key=${process.env.FIREBASE_API_KEY}`,
+                {
+                    email: "test@example.com",
+                    password: "password123",
+                    returnSecureToken: true,
+                }
+            );
+
+            expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+                "test@example.com"
+            );
+        });
+
+        it("should throw an error if Firebase login fails", async () => {
+            (lastValueFrom as jest.Mock).mockRejectedValue(
+                new Error("Firebase error")
+            );
+
+            await expect(
+                authService.login("test@example.com", "password123")
+            ).rejects.toThrow(
+                new InternalServerErrorException("Invalid login credentials")
+            );
+
+            expect(mockHttpService.post).toHaveBeenCalledWith(
+                `${process.env.FIREBASE_AUTH_DOMAIN}?key=${process.env.FIREBASE_API_KEY}`,
+                {
+                    email: "test@example.com",
+                    password: "password123",
+                    returnSecureToken: true,
+                }
+            );
+
+            expect(mockUsersService.findByEmail).not.toHaveBeenCalled();
+        });
     });
-  });
-
-  describe('authenticate', () => {
-    it('should authenticate a user successfully', async () => {
-      const mockDecodedToken: DecodedIdToken = {
-        uid: 'firebase-uid',
-        email: 'test@example.com',
-        name: 'Test User',
-        aud: 'test-audience',
-        auth_time: 1620000000,
-        exp: 1620003600,
-        iat: 1620000000,
-        iss: 'https://securetoken.google.com/test-project',
-        sub: 'firebase-uid',
-        firebase: {
-          identities: {
-            email: ['test@example.com'],
-          },
-          sign_in_provider: 'password',
-        },
-      };
-
-      const mockUser = {
-        id: 'db-id',
-        firebaseUid: 'firebase-uid',
-        email: 'test@example.com',
-        name: 'Test User',
-      };
-
-      jest
-        .spyOn(admin.auth(), 'verifyIdToken')
-        .mockResolvedValue(mockDecodedToken);
-      mockUsersService.findOrCreateUser.mockResolvedValue(mockUser);
-
-      const result = await authService.authenticate('valid-token');
-
-      expect(result).toEqual({ message: 'User authenticated', user: mockUser });
-      expect(admin.auth().verifyIdToken).toHaveBeenCalledWith('valid-token');
-      expect(mockUsersService.findOrCreateUser).toHaveBeenCalledWith({
-        firebaseUid: 'firebase-uid',
-        email: 'test@example.com',
-        name: 'Test User',
-      });
-    });
-
-    it('should throw UnauthorizedException for invalid token', async () => {
-      jest
-        .spyOn(admin.auth(), 'verifyIdToken')
-        .mockRejectedValue({ code: 'auth/argument-error' });
-
-      await expect(authService.authenticate('invalid-token')).rejects.toThrow(
-        UnauthorizedException,
-      );
-    });
-
-    it('should throw InternalServerErrorException for unexpected errors', async () => {
-      jest
-        .spyOn(admin.auth(), 'verifyIdToken')
-        .mockRejectedValue(new Error('Unexpected error'));
-
-      await expect(authService.authenticate('valid-token')).rejects.toThrow(
-        InternalServerErrorException,
-      );
-    });
-  });
 });
