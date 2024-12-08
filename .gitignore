@@ -60,6 +60,3 @@ pgdata
 
 # firebase
 firebase-service-account.json
-
-# npm
-package-lock.json
