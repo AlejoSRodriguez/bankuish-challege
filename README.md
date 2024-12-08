@@ -45,13 +45,13 @@ You can access the Swagger documentation at http://localhost:3000/docs. The docu
 
 ### Authentication
 
-Most endpoints are protected and require authentication. First, execute the /api/seed endpoint to generate an admin user and retrieve credentials. Use these credentials to log in and obtain a token. Once you have the token, click the Authorize 🔒 button at the top of the Swagger UI and paste the token into the input field to authorize your requests.
+Most endpoints are protected and require authentication. First, execute the /api/signup endpoint to create an account and retrieve credentials. Use these credentials to log in and obtain a token. Once you have the token, click the Authorize 🔒 button at the top of the Swagger UI and paste the token into the input field to authorize your requests.
 
 ## Testing 🧪
 
 The API includes unit and e2e tests for all modules. To run the tests, use:
 ```bash
-pnpm run test
+npm run test
 ```
 
 ## Author
