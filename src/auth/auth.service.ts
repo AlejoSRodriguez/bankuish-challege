@@ -66,7 +66,6 @@ export class AuthService {
     async login(email: string, password: string): Promise<any> {
         const url = `${process.env.FIREBASE_AUTH_DOMAIN}?key=${process.env.FIREBASE_API_KEY}`;
         try {
-            // Autenticar con Firebase
             const response = await lastValueFrom(
                 this.httpService.post(url, {
                     email,
@@ -94,7 +93,12 @@ export class AuthService {
                 },
             };
         } catch (error) {
-            console.error("Error during login:", error.message);
+            if (
+                error.message ===
+                "User exists in Firebase but not in the local database."
+            ) {
+                throw error;
+            }
             throw new InternalServerErrorException("Invalid login credentials");
         }
     }

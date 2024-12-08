@@ -10,7 +10,7 @@ import {
 import { AuthService } from "./auth.service";
 import { AuthGuard } from "./guards/auth.guard";
 import { RegisterDto } from "./dtos/register.dto";
-import { HttpExceptionFilter } from "src/http-exception/http-exception.filter";
+import { HttpExceptionFilter } from "../http-exception/http-exception.filter";
 import {
     ApiTags,
     ApiOperation,

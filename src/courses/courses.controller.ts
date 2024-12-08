@@ -20,14 +20,27 @@ export class CoursesController {
     @ApiBody({
         schema: {
             example: {
+                userId: "30ecc27b-9df7-4dd3-b52f-d001e79bd035",
                 courses: [
+                    {
+                        desiredCourse: "PortfolioConstruction",
+                        requiredCourse: "PortfolioTheories",
+                    },
                     {
                         desiredCourse: "InvestmentManagement",
                         requiredCourse: "Investment",
                     },
                     {
-                        desiredCourse: "PortfolioConstruction",
-                        requiredCourse: "PortfolioTheories",
+                        desiredCourse: "Investment",
+                        requiredCourse: "Finance",
+                    },
+                    {
+                        desiredCourse: "PortfolioTheories",
+                        requiredCourse: "Investment",
+                    },
+                    {
+                        desiredCourse: "InvestmentStyle",
+                        requiredCourse: "InvestmentManagement",
                     },
                 ],
             },
@@ -42,7 +55,8 @@ export class CoursesController {
                 { course: "Investment", order: 1 },
                 { course: "InvestmentManagement", order: 2 },
                 { course: "PortfolioTheories", order: 3 },
-                { course: "PortfolioConstruction", order: 4 },
+                { course: "InvestmentStyle", order: 4 },
+                { course: "PortfolioConstruction", order: 5 },
             ],
         },
     })
@@ -73,14 +87,27 @@ export class CoursesController {
     @ApiBody({
         schema: {
             example: {
+                userId: "30ecc27b-9df7-4dd3-b52f-d001e79bd035",
                 courses: [
+                    {
+                        desiredCourse: "PortfolioConstruction",
+                        requiredCourse: "PortfolioTheories",
+                    },
                     {
                         desiredCourse: "InvestmentManagement",
                         requiredCourse: "Investment",
                     },
                     {
-                        desiredCourse: "PortfolioConstruction",
-                        requiredCourse: "PortfolioTheories",
+                        desiredCourse: "Investment",
+                        requiredCourse: "Finance",
+                    },
+                    {
+                        desiredCourse: "PortfolioTheories",
+                        requiredCourse: "Investment",
+                    },
+                    {
+                        desiredCourse: "InvestmentStyle",
+                        requiredCourse: "InvestmentManagement",
                     },
                 ],
             },
